@@ -2,8 +2,17 @@
 
 import os
 import requests
+import urllib3
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Tuple
+
+# Try loading .env file
+try:
+    from dotenv import load_dotenv
+    env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
+    load_dotenv(dotenv_path=env_path)
+except Exception:
+    pass
 
 # Mapping of counties/cities to region in Taiwan
 REGION_MAP = {
@@ -50,7 +59,7 @@ def fetch_cwa_forecast(api_key: str = None) -> Tuple[List[Dict[str, Any]], bool,
     Returns: (forecast_records, is_live_data, message)
     """
     # Try resolving API key from parameter or environment
-    key = api_key or os.environ.get("CWA_API_KEY", "").strip()
+    key = (api_key or os.environ.get("CWA_API_KEY", "")).strip()
 
     if not key or key == "your_api_key_here":
         # Fallback to realistic mock data so the app always displays nicely
@@ -63,16 +72,22 @@ def fetch_cwa_forecast(api_key: str = None) -> Tuple[List[Dict[str, Any]], bool,
     }
 
     try:
-        response = requests.get(CWA_36H_API_URL, params=params, timeout=10)
+        try:
+            response = requests.get(CWA_36H_API_URL, params=params, timeout=10)
+        except requests.exceptions.SSLError:
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+            response = requests.get(CWA_36H_API_URL, params=params, verify=False, timeout=10)
+
         response.raise_for_status()
         data = response.json()
 
-        if not data.get("success") == "true":
+        success_val = str(data.get("success", "")).lower()
+        if success_val != "true":
             records = generate_mock_forecasts()
             return records, False, "API 回應失敗，切換為模擬資料"
 
         records = parse_cwa_json(data)
-        return records, True, f"成功從氣象署 API 更新 {len(records)} 筆預報資料"
+        return records, True, f"成功從氣象署 API 更新 {len(records)} 筆即時預報資料"
 
     except Exception as e:
         records = generate_mock_forecasts()

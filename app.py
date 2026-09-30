@@ -4,6 +4,7 @@ Built with Python, Streamlit, SQLite, and CWA API.
 HW1 - Antigravity x Gemini x GitHub Project.
 """
 
+import os
 import streamlit as st
 import pandas as pd
 import datetime
@@ -92,19 +93,28 @@ def main():
         st.header("⚙️ 設定與資料同步")
         st.markdown("連線至 **中央氣象署 (CWA)** 開放資料 API")
         
+        default_key = os.environ.get("CWA_API_KEY", "").strip()
         api_key_input = st.text_input(
             "CWA API Key (授權碼)",
+            value=default_key,
             type="password",
-            help="未輸入時將以全台示範數據即時展示。可至 opendata.cwa.gov.tw 免費申請。"
+            help="已自動載入 .env 授權碼。亦可自行輸入更換。"
         )
+
+        active_key = api_key_input.strip() or default_key
+        if active_key and active_key != "your_api_key_here":
+            st.caption("🟢 **狀態**: 授權碼已配置 (CWA 連線中)")
+        else:
+            st.caption("⚪ **狀態**: 示範展示模式 (可輸入 API Key 切換即時資料)")
 
         sync_btn = st.button("🔄 同步更新氣象資料", use_container_width=True)
         if sync_btn:
             with st.spinner("正在獲取最新天氣資料並寫入 SQLite 資料庫..."):
-                records, is_live, msg = fetch_cwa_forecast(api_key_input)
+                records, is_live, msg = fetch_cwa_forecast(active_key)
                 saved_count = save_forecasts(records)
                 if is_live:
                     st.success(f"✅ {msg} (更新 {saved_count} 筆)")
+                    st.rerun()
                 else:
                     st.info(f"ℹ️ {msg} (已寫入 {saved_count} 筆)")
         
