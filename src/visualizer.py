@@ -46,6 +46,14 @@ def create_temperature_comparison_chart(df: pd.DataFrame) -> go.Figure:
 
 def create_trend_chart(periods_df: pd.DataFrame, city_name: str) -> go.Figure:
     """Create a multi-period temperature & rain probability trend for a selected city."""
+    df_copy = periods_df.copy()
+    if "period_label" not in df_copy.columns:
+        if "start_time" in df_copy.columns:
+            df_copy["period_label"] = df_copy["start_time"].astype(str)
+        else:
+            df_copy["period_label"] = [f"時段 {i+1}" for i in range(len(df_copy))]
+    periods_df = df_copy
+
     fig = go.Figure()
 
     # Line for Max Temp
@@ -125,12 +133,15 @@ def create_taiwan_weather_map(df: pd.DataFrame) -> go.Figure:
 
     map_df = pd.DataFrame(map_data)
 
-    fig = px.scatter_mapbox(
-        map_df,
-        lat="lat",
-        lon="lon",
-        hover_name="location",
-        hover_data={
+    # Plotly 6+ / 7+ uses scatter_map instead of scatter_mapbox
+    map_func = getattr(px, "scatter_map", None) or getattr(px, "scatter_mapbox", None)
+    map_style_param = "map_style" if hasattr(px, "scatter_map") else "mapbox_style"
+
+    kwargs = {
+        "lat": "lat",
+        "lon": "lon",
+        "hover_name": "location",
+        "hover_data": {
             "lat": False,
             "lon": False,
             "weather": True,
@@ -138,14 +149,16 @@ def create_taiwan_weather_map(df: pd.DataFrame) -> go.Figure:
             "rain_prob": True,
             "comfort": True
         },
-        color="max_temp",
-        color_continuous_scale="Plasma",
-        size=[18] * len(map_df),
-        zoom=7,
-        center={"lat": 23.8, "lon": 120.9},
-        mapbox_style="carto-positron",
-        title="台灣即時天氣觀測地圖 (點選查看細節)"
-    )
+        "color": "max_temp",
+        "color_continuous_scale": "Plasma",
+        "size": [18] * len(map_df),
+        "zoom": 6.8,
+        "center": {"lat": 23.8, "lon": 120.9},
+        map_style_param: "carto-positron",
+        "title": "台灣即時天氣觀測地圖 (點選查看細節)"
+    }
+
+    fig = map_func(map_df, **kwargs)
 
     fig.update_layout(
         margin=dict(l=0, r=0, t=40, b=0),

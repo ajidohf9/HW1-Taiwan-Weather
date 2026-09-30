@@ -94,18 +94,31 @@ def main():
         st.markdown("連線至 **中央氣象署 (CWA)** 開放資料 API")
         
         default_key = os.environ.get("CWA_API_KEY", "").strip()
-        api_key_input = st.text_input(
-            "CWA API Key (授權碼)",
-            value=default_key,
-            type="password",
-            help="已自動載入 .env 授權碼。亦可自行輸入更換。"
-        )
+        active_key = default_key
 
-        active_key = api_key_input.strip() or default_key
-        if active_key and active_key != "your_api_key_here":
-            st.caption("🟢 **狀態**: 授權碼已配置 (CWA 連線中)")
+        if default_key and default_key != "your_api_key_here":
+            st.success("🟢 **氣象署 API 授權已配置**")
+            st.caption("✨ 系統已自動套用您的授權碼，直接點擊下方按鈕即可同步。")
+            with st.expander("⚙️ 變更授權碼設定"):
+                custom_key = st.text_input(
+                    "更換 CWA API Key",
+                    value=default_key,
+                    type="password",
+                    help="預設已讀取 .env 檔，如欲切換其他 Key 可在此修改。"
+                )
+                if custom_key.strip():
+                    active_key = custom_key.strip()
         else:
-            st.caption("⚪ **狀態**: 示範展示模式 (可輸入 API Key 切換即時資料)")
+            api_key_input = st.text_input(
+                "CWA API Key (授權碼)",
+                type="password",
+                help="未輸入時將以全台示範數據即時展示。可至 opendata.cwa.gov.tw 免費申請。"
+            )
+            active_key = api_key_input.strip()
+            if active_key:
+                st.caption("🟢 **狀態**: 已自訂授權碼")
+            else:
+                st.caption("⚪ **狀態**: 示範展示模式 (可輸入 API Key 切換即時資料)")
 
         sync_btn = st.button("🔄 同步更新氣象資料", use_container_width=True)
         if sync_btn:
