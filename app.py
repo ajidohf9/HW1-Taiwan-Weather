@@ -5,9 +5,19 @@ HW1 - Antigravity x Gemini x GitHub Project.
 """
 
 import os
+import importlib
 import streamlit as st
 import pandas as pd
 import datetime
+
+import src.cwa_api
+import src.db
+import src.visualizer
+
+importlib.reload(src.cwa_api)
+importlib.reload(src.db)
+importlib.reload(src.visualizer)
+
 from src.cwa_api import fetch_cwa_forecast, REGION_MAP
 from src.db import init_db, save_forecasts, get_latest_forecasts, get_location_forecast, get_all_locations, DEFAULT_DB_PATH
 from src.visualizer import (
