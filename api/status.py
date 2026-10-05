@@ -11,7 +11,7 @@ class handler(BaseHTTPRequestHandler):
         req_path = self.path.split("?")[0].rstrip("/")
 
         # API Status Endpoint
-        if req_path in ("/api/status", "/api"):
+        if any(req_path.endswith(p) for p in ("/api/status", "/api/status.py", "/status", "/api")) or "status" in req_path:
             self.send_response(200)
             self.send_header("Content-Type", "application/json; charset=utf-8")
             self.send_header("Access-Control-Allow-Origin", "*")

@@ -224,7 +224,7 @@
       border-radius: 20px;
       padding: 24px 28px;
       box-shadow: var(--shadow-glow);
-      margin-bottom: 30px;
+      margin-bottom: 24px;
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -233,7 +233,7 @@
       backdrop-filter: blur(20px);
     }
     .dual-hero-text h2 {
-      font-size: 1.7rem;
+      font-size: 1.65rem;
       font-weight: 900;
       letter-spacing: -0.02em;
       margin-bottom: 8px;
@@ -241,12 +241,67 @@
     .dual-hero-text p {
       color: var(--text-muted);
       font-size: 0.92rem;
-      max-width: 650px;
+      max-width: 680px;
     }
     .dual-hero-action {
       display: flex;
       gap: 12px;
       flex-wrap: wrap;
+    }
+
+    /* KPI Summary Cards */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 16px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      backdrop-filter: blur(12px);
+      transition: var(--transition-smooth);
+    }
+    .kpi-card:hover {
+      transform: translateY(-3px);
+      border-color: var(--border-color);
+    }
+    .kpi-icon {
+      font-size: 2rem;
+      width: 48px;
+      height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      background: rgba(56, 189, 248, 0.12);
+    }
+    .kpi-info { flex: 1; }
+    .kpi-label {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .kpi-val {
+      font-size: 1.35rem;
+      font-weight: 900;
+      color: var(--text-main);
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .kpi-sub {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
     }
 
     /* Filter & Search Bar */
@@ -281,6 +336,30 @@
       box-shadow: 0 2px 10px rgba(2, 132, 199, 0.35);
     }
 
+    .filter-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .sort-select {
+      padding: 8px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border-card);
+      background: var(--bg-card);
+      color: var(--text-main);
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 600;
+      outline: none;
+      cursor: pointer;
+      transition: var(--transition-smooth);
+    }
+    .sort-select:focus {
+      border-color: var(--accent-cyan);
+    }
+
     .search-input {
       padding: 8px 16px;
       border-radius: 12px;
@@ -290,7 +369,7 @@
       font-family: inherit;
       font-size: 0.85rem;
       outline: none;
-      width: 240px;
+      width: 250px;
       transition: var(--transition-smooth);
     }
     .search-input:focus {
@@ -443,9 +522,10 @@
       border-radius: 12px;
       padding: 14px 18px;
       font-family: monospace;
-      font-size: 0.82rem;
+      font-size: 0.84rem;
       color: var(--text-main);
       overflow-x: auto;
+      max-height: 280px;
     }
 
     /* Footer */
@@ -464,6 +544,8 @@
       .nav-actions { width: 100%; justify-content: space-between; }
       .dual-hero { flex-direction: column; align-items: flex-start; }
       .search-input { width: 100%; }
+      .filter-controls { width: 100%; }
+      .sort-select { width: 100%; }
     }
   </style>
 </head>
@@ -492,7 +574,7 @@
           🐱 GitHub 倉庫
         </a>
 
-        <a href="https://hw1-taiwan-weather.streamlit.app" target="_blank" rel="noopener noreferrer" class="btn btn-primary" id="direct-stream-btn">
+        <a href="https://hw1-taiwan-weather-ajidohf9.streamlit.app" target="_blank" rel="noopener noreferrer" class="btn btn-primary" id="direct-stream-btn">
           🚀 前往 Streamlit 雲端系統
         </a>
       </div>
@@ -515,12 +597,44 @@
     <section class="dual-hero">
       <div class="dual-hero-text">
         <h2>全台氣象高解析觀測與防災預警中心</h2>
-        <p>本專案採雙雲端架構部署：當前頁面為 <b>Vercel Edge Web Portal</b>，負責高可用靜態呈現與 Serverless 監控；後台無縫串聯 <b>Streamlit Community Cloud</b> 進行 Python 動態運算、7 大分析分頁與 SQLite 本地快取。</p>
+        <p>本專案採雙雲端架構部署：當前頁面為 <b>Vercel Edge Web Portal</b>，負責高可用靜態呈現與 Serverless 微服務；深度氣象分析可無縫串聯 <b>Streamlit Community Cloud</b> 進行 Python 動態運算、7 大分析分頁與 SQLite 本地快取。</p>
       </div>
       <div class="dual-hero-action">
-        <a href="https://hw1-taiwan-weather.streamlit.app" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="padding:12px 24px; font-size:0.95rem;">
+        <a href="https://hw1-taiwan-weather-ajidohf9.streamlit.app" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="padding:12px 24px; font-size:0.95rem;">
           ⚡ 開啟 Streamlit 原生全功能系統 (新分頁)
         </a>
+      </div>
+    </section>
+
+    <!-- KPI Summary Section -->
+    <section class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-icon">🌡️</div>
+        <div class="kpi-info">
+          <div class="kpi-label">全台最高溫</div>
+          <div class="kpi-val">30.0°C <span class="kpi-sub">屏東 / 臺南 / 高雄 / 南投</span></div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon">❄️</div>
+        <div class="kpi-info">
+          <div class="kpi-label">全台最低溫</div>
+          <div class="kpi-val">23.0°C <span class="kpi-sub">苗栗縣 (舒適涼爽)</span></div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon">🌧️</div>
+        <div class="kpi-info">
+          <div class="kpi-label">最高降雨機率</div>
+          <div class="kpi-val">80% <span class="kpi-sub">連江縣 (馬祖)</span></div>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon">💨</div>
+        <div class="kpi-info">
+          <div class="kpi-label">氣象災害特報</div>
+          <div class="kpi-val" style="color:#EF4444;">14 縣市 <span class="kpi-sub">陸上強風警戒</span></div>
+        </div>
       </div>
     </section>
 
@@ -535,7 +649,15 @@
         <button class="pill" data-region="離島">離島 (3)</button>
       </div>
 
-      <input type="text" id="search-input" class="search-input" placeholder="🔍 快速搜尋縣市名稱..." />
+      <div class="filter-controls">
+        <select id="sort-select" class="sort-select" title="選擇排序方式">
+          <option value="default">📌 預設分區排序</option>
+          <option value="temp-desc">🔥 氣溫：由高至低</option>
+          <option value="temp-asc">❄️ 氣溫：由低至高</option>
+          <option value="rain-desc">🌧️ 降雨率：由高至低</option>
+        </select>
+        <input type="text" id="search-input" class="search-input" placeholder="🔍 搜尋縣市（如：台北 / 台中）..." />
+      </div>
     </div>
 
     <!-- 22 Counties Weather Cards Grid -->
@@ -551,7 +673,7 @@
           <p style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">氣象署即時觀測高低溫區間與溫差分析圖</p>
         </div>
       </div>
-      <div id="plotly-temp-chart" style="width:100%; height:420px;"></div>
+      <div id="plotly-temp-chart" style="width:100%; height:430px;"></div>
     </section>
 
     <!-- Architecture Features -->
@@ -602,9 +724,7 @@
           🔄 重新連線 /api/status
         </button>
       </div>
-      <div class="code-preview" id="api-output">
-        正在連線至 Vercel Serverless API...
-      </div>
+      <pre class="code-preview" id="api-output">正在連線至 Vercel Serverless API...</pre>
     </section>
 
     <!-- Footer -->
@@ -628,16 +748,25 @@
     // State
     let currentRegion = '全部';
     let searchQuery = '';
+    let currentSort = 'default';
 
     // Elements
     const cityGrid = document.getElementById('city-grid');
     const regionPills = document.querySelectorAll('.pill');
     const searchInput = document.getElementById('search-input');
+    const sortSelect = document.getElementById('sort-select');
     const themeBtn = document.getElementById('theme-btn');
     const htmlEl = document.documentElement;
 
+    // Helper: Normalize Taiwan/Taipei (台 vs 臺)
+    function normalizeCity(str) {
+      if (!str) return '';
+      return str.replace(/台/g, '臺').trim().toLowerCase();
+    }
+
     // Helper: Weather icon mapper
     function getWeatherIcon(weather) {
+      if (weather.includes('雷')) return '⛈️';
       if (weather.includes('雨')) return '🌧️';
       if (weather.includes('陰')) return '☁️';
       if (weather.includes('多雲')) return '⛅';
@@ -647,15 +776,25 @@
 
     // Render city cards
     function renderCards() {
-      const filtered = citiesData.filter(c => {
+      const q = normalizeCity(searchQuery);
+      let filtered = citiesData.filter(c => {
         const matchRegion = (currentRegion === '全部' || c.region === currentRegion);
-        const matchSearch = (searchQuery === '' || c.name.includes(searchQuery));
+        const matchSearch = (!q || normalizeCity(c.name).includes(q) || c.name.toLowerCase().includes(searchQuery.toLowerCase()));
         return matchRegion && matchSearch;
       });
 
+      // Sorting
+      if (currentSort === 'temp-desc') {
+        filtered.sort((a, b) => b.max_temp - a.max_temp);
+      } else if (currentSort === 'temp-asc') {
+        filtered.sort((a, b) => a.min_temp - b.min_temp);
+      } else if (currentSort === 'rain-desc') {
+        filtered.sort((a, b) => b.rain_prob - a.rain_prob);
+      }
+
       cityGrid.innerHTML = '';
       if (filtered.length === 0) {
-        cityGrid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding:40px; color:var(--text-muted); font-size:1.05rem;">🔍 查無符合條件的縣市</div>';
+        cityGrid.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding:40px; color:var(--text-muted); font-size:1.05rem;">🔍 查無符合條件的縣市（試試搜尋「台北」或「台中」）</div>';
         return;
       }
 
@@ -706,9 +845,15 @@
       });
     });
 
-    // Search Input
+    // Search Input with live filter
     searchInput.addEventListener('input', (e) => {
-      searchQuery = e.target.value.trim();
+      searchQuery = e.target.value;
+      renderCards();
+    });
+
+    // Sort Dropdown
+    sortSelect.addEventListener('change', (e) => {
+      currentSort = e.target.value;
       renderCards();
     });
 
@@ -756,27 +901,38 @@
         text: maxTemps.map((t, idx) => `${minTemps[idx]}°~${t}°C`),
         textposition: 'outside',
         textfont: { color: fontColor, size: 10 },
+        cliponaxis: false,
         hovertemplate: '<b>%{x}</b><br>最低溫: %{base}°C<br>最高溫: %{marker.color}°C<extra></extra>'
       };
 
       const layout = {
-        margin: { l: 40, r: 20, t: 30, b: 60 },
+        margin: { l: 45, r: 25, t: 40, b: 70 },
         paper_bgcolor: 'rgba(0,0,0,0)',
         plot_bgcolor: 'rgba(0,0,0,0)',
         font: { family: 'Plus Jakarta Sans, Noto Sans TC, sans-serif', color: fontColor },
-        xaxis: { tickangle: -35, gridcolor: gridColor, tickfont: { color: fontColor, size: 11 } },
-        yaxis: { title: { text: '氣溫 (°C)', font: { color: fontColor } }, gridcolor: gridColor, tickfont: { color: fontColor } },
+        xaxis: { tickangle: -35, gridcolor: gridColor, tickfont: { color: fontColor, size: 11 }, automargin: true },
+        yaxis: { 
+          title: { text: '氣溫 (°C)', font: { color: fontColor } }, 
+          gridcolor: gridColor, 
+          tickfont: { color: fontColor },
+          range: [20, 33],
+          automargin: true 
+        },
         template: isDark ? 'plotly_dark' : 'plotly_white'
       };
 
       Plotly.newPlot('plotly-temp-chart', [trace], layout, { responsive: true, displayModeBar: false });
     }
 
+    window.addEventListener('resize', () => {
+      Plotly.Plots.resize('plotly-temp-chart');
+    });
+
     // Live fetch /api/status
     async function loadApiStatus() {
       const output = document.getElementById('api-output');
       try {
-        const resp = await fetch('/api/status');
+        const resp = await fetch('/api/status?t=' + Date.now());
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const data = await resp.json();
         output.textContent = JSON.stringify(data, null, 2);
@@ -785,6 +941,7 @@
           status: "online",
           platform: "Vercel Edge Serverless",
           service: "Taiwan Weather Forecast System",
+          author: "ajidohf9",
           note: "Vercel Python Serverless 節點運行正常",
           timestamp: new Date().toISOString()
         }, null, 2);
