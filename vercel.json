@@ -2,6 +2,10 @@
   "version": 2,
   "name": "hw1-taiwan-weather",
   "cleanUrls": true,
+  "rewrites": [
+    { "source": "/api/status", "destination": "/api/status.py" },
+    { "source": "/", "destination": "/index.html" }
+  ],
   "headers": [
     {
       "source": "/(.*)",
