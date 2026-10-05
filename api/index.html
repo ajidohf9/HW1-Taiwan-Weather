@@ -4,11 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>台灣即時天氣與環境觀測中心 | HW1 Vercel Web Portal</title>
-  <meta name="description" content="中興大學物聯網數據分析與應用作業 (HW1) - 串接中央氣象署 CWA 36H/7D/警特報開放資料、環境部 AQI 與 UVI 監測。">
+  <meta name="description" content="中興大學物聯網數據分析與應用作業 (HW1) - 串接中央氣象署 CWA 36H/7D/警特報開放資料、Leaflet 互動氣象地圖與 Plotly 圖表。">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  
+  <!-- Plotly.js -->
   <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+
   <style>
     :root {
       --font-main: 'Plus Jakarta Sans', 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -17,9 +24,9 @@
 
     [data-theme="dark"] {
       --bg-gradient: radial-gradient(circle at 15% 15%, #0B192C 0%, #030712 55%, #000000 100%);
-      --bg-surface: rgba(15, 23, 42, 0.7);
-      --bg-card: rgba(30, 41, 59, 0.55);
-      --bg-card-hover: rgba(51, 65, 85, 0.65);
+      --bg-surface: rgba(15, 23, 42, 0.72);
+      --bg-card: rgba(30, 41, 59, 0.6);
+      --bg-card-hover: rgba(51, 65, 85, 0.7);
       --border-color: rgba(56, 189, 248, 0.22);
       --border-card: rgba(255, 255, 255, 0.1);
       --text-main: #F8FAFC;
@@ -32,13 +39,13 @@
       --accent-purple: #8B5CF6;
       --shadow-glow: 0 16px 36px -10px rgba(56, 189, 248, 0.25);
       --code-bg: rgba(0, 0, 0, 0.45);
-      --plotly-template: 'plotly_dark';
+      --leaflet-tile: 'dark';
     }
 
     [data-theme="light"] {
       --bg-gradient: radial-gradient(circle at 15% 15%, #E0F2FE 0%, #F0F9FF 45%, #FFFFFF 100%);
       --bg-surface: rgba(255, 255, 255, 0.85);
-      --bg-card: rgba(255, 255, 255, 0.9);
+      --bg-card: rgba(255, 255, 255, 0.92);
       --bg-card-hover: rgba(241, 245, 249, 1);
       --border-color: rgba(2, 132, 199, 0.25);
       --border-card: rgba(203, 213, 225, 0.7);
@@ -52,7 +59,7 @@
       --accent-purple: #7C3AED;
       --shadow-glow: 0 16px 36px -10px rgba(2, 132, 199, 0.18);
       --code-bg: rgba(241, 245, 249, 0.85);
-      --plotly-template: 'plotly_white';
+      --leaflet-tile: 'light';
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -87,7 +94,7 @@
       margin-bottom: 24px;
       position: sticky;
       top: 16px;
-      z-index: 100;
+      z-index: 1000;
     }
 
     .brand { display: flex; align-items: center; gap: 12px; }
@@ -304,6 +311,128 @@
       color: var(--text-muted);
     }
 
+    /* Interactive Map Section */
+    .map-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 24px;
+      margin-bottom: 32px;
+      box-shadow: var(--shadow-glow);
+      backdrop-filter: blur(20px);
+    }
+    .map-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .map-header h3 {
+      font-size: 1.28rem;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .map-controls-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    #taiwan-map {
+      width: 100%;
+      height: 520px;
+      border-radius: 16px;
+      border: 1px solid var(--border-card);
+      z-index: 10;
+      background: #0B192C;
+    }
+
+    /* Custom Leaflet Marker Badges */
+    .map-marker-pill {
+      background: rgba(15, 23, 42, 0.88);
+      color: #FFFFFF;
+      border: 1.5px solid #38BDF8;
+      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.4);
+      padding: 4px 9px;
+      border-radius: 16px;
+      font-size: 0.78rem;
+      font-weight: 800;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      transform: translate(-50%, -50%);
+    }
+    .map-marker-pill:hover {
+      transform: translate(-50%, -50%) scale(1.15);
+      box-shadow: 0 6px 20px rgba(56, 189, 248, 0.7);
+      border-color: #F59E0B;
+      z-index: 9999 !important;
+    }
+    .map-marker-temp {
+      color: #38BDF8;
+      font-weight: 900;
+    }
+    .map-marker-rain {
+      color: #10B981;
+      font-weight: 800;
+    }
+
+    /* Leaflet Popup Styling */
+    .leaflet-popup-content-wrapper {
+      background: var(--bg-card) !important;
+      color: var(--text-main) !important;
+      border-radius: 14px !important;
+      border: 1px solid var(--border-color) !important;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35) !important;
+      backdrop-filter: blur(16px);
+      padding: 4px;
+    }
+    .leaflet-popup-tip {
+      background: var(--bg-card) !important;
+    }
+    .map-popup-card h4 {
+      font-size: 1.05rem;
+      font-weight: 800;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .popup-temp {
+      font-size: 1.35rem;
+      font-weight: 900;
+      color: var(--accent-cyan);
+      margin-bottom: 4px;
+    }
+    .popup-desc {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .popup-btn {
+      width: 100%;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+      color: #FFFFFF;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: var(--transition-smooth);
+    }
+    .popup-btn:hover {
+      opacity: 0.9;
+    }
+
     /* Filter & Search Bar */
     .filter-bar {
       display: flex;
@@ -399,6 +528,16 @@
       transform: translateY(-4px);
       border-color: var(--border-color);
       box-shadow: var(--shadow-glow);
+    }
+    .city-card.card-highlight {
+      border: 2px solid var(--accent-amber);
+      box-shadow: 0 0 25px rgba(245, 158, 11, 0.5);
+      animation: highlightPulse 2.5s ease-out;
+    }
+    @keyframes highlightPulse {
+      0% { transform: scale(1.03); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
     }
     .card-top {
       display: flex;
@@ -546,6 +685,7 @@
       .search-input { width: 100%; }
       .filter-controls { width: 100%; }
       .sort-select { width: 100%; }
+      #taiwan-map { height: 420px; }
     }
   </style>
 </head>
@@ -597,7 +737,7 @@
     <section class="dual-hero">
       <div class="dual-hero-text">
         <h2>全台氣象高解析觀測與防災預警中心</h2>
-        <p>本專案採雙雲端架構部署：當前頁面為 <b>Vercel Edge Web Portal</b>，負責高可用靜態呈現與 Serverless 微服務；深度氣象分析可無縫串聯 <b>Streamlit Community Cloud</b> 進行 Python 動態運算、7 大分析分頁與 SQLite 本地快取。</p>
+        <p>本專案採雙雲端架構部署：當前頁面為 <b>Vercel Edge Web Portal</b>，整合 <b>Leaflet.js 互動氣象地圖</b>、22 縣市即時卡片與 Serverless 微服務；深度數據分析可無縫串聯 <b>Streamlit Community Cloud</b> 進行 Python 動態運算、7 大分析分頁與 SQLite 本地快取。</p>
       </div>
       <div class="dual-hero-action">
         <a href="https://hw1-taiwan-weather-ajidohf9.streamlit.app" target="_blank" rel="noopener noreferrer" class="btn btn-primary" style="padding:12px 24px; font-size:0.95rem;">
@@ -636,6 +776,27 @@
           <div class="kpi-val" style="color:#EF4444;">14 縣市 <span class="kpi-sub">陸上強風警戒</span></div>
         </div>
       </div>
+    </section>
+
+    <!-- Interactive Leaflet Map Section -->
+    <section class="map-box">
+      <div class="map-header">
+        <div>
+          <h3>🗺️ 全台 22 縣市即時氣象互動地圖 (Leaflet.js)</h3>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">
+            支援全螢幕縮放拖曳、深淺色地圖底圖、即時氣溫與降雨圖標；點擊標記可自動聚焦對應縣市卡片
+          </p>
+        </div>
+        <div class="map-controls-group">
+          <button class="btn btn-secondary" id="map-mode-btn" style="font-size:0.8rem;">
+            🌡️ 切換為降雨模式
+          </button>
+          <button class="btn btn-secondary" id="reset-map-btn" style="font-size:0.8rem;">
+            🎯 預設台灣全視角
+          </button>
+        </div>
+      </div>
+      <div id="taiwan-map"></div>
     </section>
 
     <!-- Filter & Search Controls -->
@@ -682,8 +843,8 @@
       <div class="features-grid">
         <div class="feature-card">
           <div class="feature-icon">🗺️</div>
-          <h4>互動氣象與降雨機率地圖</h4>
-          <p>整合 Plotly 散佈地圖，支援「氣溫」、「降雨機率 (PoP)」、「紫外線」與「AQI」四大圖層即時切換，並直接於縣市座標標註數值。</p>
+          <h4>互動氣象地圖 (Leaflet.js)</h4>
+          <p>整合 Leaflet GPU 加速地圖，動態載入 CartoDB 深淺雙色底圖，22 縣市氣候標記支援即時圖層切換與彈窗導航。</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">🚨</div>
@@ -742,13 +903,14 @@
   </div>
 
   <script>
-    // Embedded 22 cities real-time dataset
-    const citiesData = [{"name": "南投縣", "region": "中部", "weather": "晴時多雲", "rain_prob": 0, "min_temp": 25, "max_temp": 30, "comfort": "舒適至悶熱"}, {"name": "嘉義市", "region": "南部", "weather": "晴時多雲", "rain_prob": 0, "min_temp": 24, "max_temp": 29, "comfort": "舒適至悶熱"}, {"name": "嘉義縣", "region": "南部", "weather": "晴時多雲", "rain_prob": 0, "min_temp": 25, "max_temp": 29, "comfort": "舒適至悶熱"}, {"name": "基隆市", "region": "北部", "weather": "多雲短暫陣雨", "rain_prob": 40, "min_temp": 25, "max_temp": 27, "comfort": "舒適"}, {"name": "宜蘭縣", "region": "北部", "weather": "多雲", "rain_prob": 20, "min_temp": 24, "max_temp": 27, "comfort": "舒適至悶熱"}, {"name": "屏東縣", "region": "南部", "weather": "晴時多雲", "rain_prob": 0, "min_temp": 26, "max_temp": 30, "comfort": "舒適至悶熱"}, {"name": "彰化縣", "region": "中部", "weather": "晴時多雲", "rain_prob": 0, "min_temp": 26, "max_temp": 29, "comfort": "舒適"}, {"name": "新北市", "region": "北部", "weather": "晴時多雲", "rain_prob": 20, "min_temp": 25, "max_temp": 28, "comfort": "舒適"}, {"name": "新竹市", "region": "北部", "weather": "晴時多雲", "rain_prob": 20, "min_temp": 25, "max_temp": 27, "comfort": "舒適"}, {"name": "新竹縣", "region": "北部", "weather": "晴時多雲", "rain_prob": 20, "min_temp": 24, "max_temp": 27, "comfort": "舒適"}, {"name": "桃園市", "region": "北部", "weather": "多雲短暫陣雨", "rain_prob": 40, "min_temp": 25, "max_temp": 28, "comfort": "舒適"}, {"name": "澎湖縣", "region": "離島", "weather": "晴時多雲", "rain_prob": 20, "min_temp": 26, "max_temp": 27, "comfort": "舒適"}, {"name": "臺中市", "region": "中部", "weather": "晴時多雲", "rain_prob": 0, "min_temp": 26, "max_temp": 29, "comfort": "舒適"}, {"name": "臺北市", "region": "北部", "weather": "多雲短暫陣雨", "rain_prob": 40, "min_temp": 25, "max_temp": 28, "comfort": "舒適至悶熱"}, {"name": "臺南市", "region": "南部", "weather": "晴時多雲", "rain_prob": 0, "min_temp": 27, "max_temp": 30, "comfort": "舒適至悶熱"}, {"name": "臺東縣", "region": "東部", "weather": "多雲", "rain_prob": 20, "min_temp": 25, "max_temp": 28, "comfort": "舒適至悶熱"}, {"name": "花蓮縣", "region": "東部", "weather": "多雲短暫陣雨", "rain_prob": 30, "min_temp": 25, "max_temp": 28, "comfort": "舒適"}, {"name": "苗栗縣", "region": "中部", "weather": "晴時多雲", "rain_prob": 20, "min_temp": 23, "max_temp": 27, "comfort": "舒適"}, {"name": "連江縣", "region": "離島", "weather": "陰時多雲短暫陣雨", "rain_prob": 80, "min_temp": 24, "max_temp": 26, "comfort": "舒適"}, {"name": "金門縣", "region": "離島", "weather": "陰時多雲短暫陣雨", "rain_prob": 30, "min_temp": 25, "max_temp": 27, "comfort": "舒適"}, {"name": "雲林縣", "region": "中部", "weather": "晴時多雲", "rain_prob": 0, "min_temp": 24, "max_temp": 29, "comfort": "舒適至悶熱"}, {"name": "高雄市", "region": "南部", "weather": "晴時多雲", "rain_prob": 0, "min_temp": 27, "max_temp": 30, "comfort": "舒適至悶熱"}];
+    // Embedded 22 cities real-time dataset with GPS coordinates
+    const citiesData = [{"name": "南投縣", "region": "中部", "lat": 23.9099, "lng": 120.6848, "weather": "晴時多雲", "rain_prob": 0, "min_temp": 25, "max_temp": 30, "comfort": "舒適至悶熱"}, {"name": "嘉義市", "region": "南部", "lat": 23.48, "lng": 120.4491, "weather": "晴時多雲", "rain_prob": 0, "min_temp": 24, "max_temp": 29, "comfort": "舒適至悶熱"}, {"name": "嘉義縣", "region": "南部", "lat": 23.4518, "lng": 120.2559, "weather": "晴時多雲", "rain_prob": 0, "min_temp": 25, "max_temp": 29, "comfort": "舒適至悶熱"}, {"name": "基隆市", "region": "北部", "lat": 25.1323, "lng": 121.7401, "weather": "多雲短暫陣雨", "rain_prob": 40, "min_temp": 25, "max_temp": 27, "comfort": "舒適"}, {"name": "宜蘭縣", "region": "北部", "lat": 24.757, "lng": 121.753, "weather": "多雲", "rain_prob": 20, "min_temp": 24, "max_temp": 27, "comfort": "舒適至悶熱"}, {"name": "屏東縣", "region": "南部", "lat": 22.6761, "lng": 120.4941, "weather": "晴時多雲", "rain_prob": 0, "min_temp": 26, "max_temp": 30, "comfort": "舒適至悶熱"}, {"name": "彰化縣", "region": "中部", "lat": 24.0816, "lng": 120.5385, "weather": "晴時多雲", "rain_prob": 0, "min_temp": 26, "max_temp": 29, "comfort": "舒適"}, {"name": "新北市", "region": "北部", "lat": 25.0118, "lng": 121.4658, "weather": "晴時多雲", "rain_prob": 20, "min_temp": 25, "max_temp": 28, "comfort": "舒適"}, {"name": "新竹市", "region": "北部", "lat": 24.8039, "lng": 120.9647, "weather": "晴時多雲", "rain_prob": 20, "min_temp": 25, "max_temp": 27, "comfort": "舒適"}, {"name": "新竹縣", "region": "北部", "lat": 24.8387, "lng": 121.0177, "weather": "晴時多雲", "rain_prob": 20, "min_temp": 24, "max_temp": 27, "comfort": "舒適"}, {"name": "桃園市", "region": "北部", "lat": 24.9936, "lng": 121.301, "weather": "多雲短暫陣雨", "rain_prob": 40, "min_temp": 25, "max_temp": 28, "comfort": "舒適"}, {"name": "澎湖縣", "region": "離島", "lat": 23.5658, "lng": 119.584, "weather": "晴時多雲", "rain_prob": 20, "min_temp": 26, "max_temp": 27, "comfort": "舒適"}, {"name": "臺中市", "region": "中部", "lat": 24.1631, "lng": 120.6402, "weather": "晴時多雲", "rain_prob": 0, "min_temp": 26, "max_temp": 29, "comfort": "舒適"}, {"name": "臺北市", "region": "北部", "lat": 25.0375, "lng": 121.5637, "weather": "多雲短暫陣雨", "rain_prob": 40, "min_temp": 25, "max_temp": 28, "comfort": "舒適至悶熱"}, {"name": "臺南市", "region": "南部", "lat": 22.9908, "lng": 120.2133, "weather": "晴時多雲", "rain_prob": 0, "min_temp": 27, "max_temp": 30, "comfort": "舒適至悶熱"}, {"name": "臺東縣", "region": "東部", "lat": 22.7583, "lng": 121.1444, "weather": "多雲", "rain_prob": 20, "min_temp": 25, "max_temp": 28, "comfort": "舒適至悶熱"}, {"name": "花蓮縣", "region": "東部", "lat": 23.9772, "lng": 121.6044, "weather": "多雲短暫陣雨", "rain_prob": 30, "min_temp": 25, "max_temp": 28, "comfort": "舒適"}, {"name": "苗栗縣", "region": "中部", "lat": 24.5602, "lng": 120.8214, "weather": "晴時多雲", "rain_prob": 20, "min_temp": 23, "max_temp": 27, "comfort": "舒適"}, {"name": "連江縣", "region": "離島", "lat": 26.1557, "lng": 119.9515, "weather": "陰時多雲短暫陣雨", "rain_prob": 80, "min_temp": 24, "max_temp": 26, "comfort": "舒適"}, {"name": "金門縣", "region": "離島", "lat": 24.4327, "lng": 118.3286, "weather": "陰時多雲短暫陣雨", "rain_prob": 30, "min_temp": 25, "max_temp": 27, "comfort": "舒適"}, {"name": "雲林縣", "region": "中部", "lat": 23.7092, "lng": 120.4313, "weather": "晴時多雲", "rain_prob": 0, "min_temp": 24, "max_temp": 29, "comfort": "舒適至悶熱"}, {"name": "高雄市", "region": "南部", "lat": 22.6273, "lng": 120.3014, "weather": "晴時多雲", "rain_prob": 0, "min_temp": 27, "max_temp": 30, "comfort": "舒適至悶熱"}];
 
     // State
     let currentRegion = '全部';
     let searchQuery = '';
     let currentSort = 'default';
+    let mapDisplayMode = 'temp'; // 'temp' or 'rain'
 
     // Elements
     const cityGrid = document.getElementById('city-grid');
@@ -756,6 +918,8 @@
     const searchInput = document.getElementById('search-input');
     const sortSelect = document.getElementById('sort-select');
     const themeBtn = document.getElementById('theme-btn');
+    const mapModeBtn = document.getElementById('map-mode-btn');
+    const resetMapBtn = document.getElementById('reset-map-btn');
     const htmlEl = document.documentElement;
 
     // Helper: Normalize Taiwan/Taipei (台 vs 臺)
@@ -773,6 +937,16 @@
       if (weather.includes('晴')) return '☀️';
       return '🌤️';
     }
+
+    // Scroll and highlight card when map marker clicked
+    window.scrollToCity = function(cityName) {
+      const card = document.getElementById('card-' + cityName);
+      if (card) {
+        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        card.classList.add('card-highlight');
+        setTimeout(() => card.classList.remove('card-highlight'), 3000);
+      }
+    };
 
     // Render city cards
     function renderCards() {
@@ -813,6 +987,7 @@
 
         const card = document.createElement('div');
         card.className = 'city-card';
+        card.id = 'card-' + c.name;
         card.innerHTML = `
           <div class="card-top">
             <div class="card-title">
@@ -857,11 +1032,128 @@
       renderCards();
     });
 
-    // Theme Switcher & Plotly Theme Updater
+    // ==========================================
+    // LEAFLET MAP INITIALIZATION
+    // ==========================================
+    let map = null;
+    let tileLayer = null;
+    let markerLayerGroup = null;
+
+    const DEFAULT_MAP_CENTER = [23.7, 120.95];
+    const DEFAULT_MAP_ZOOM = window.innerWidth < 768 ? 7 : 7.6;
+
+    function initLeafletMap(theme) {
+      if (!document.getElementById('taiwan-map')) return;
+
+      if (!map) {
+        map = L.map('taiwan-map', {
+          center: DEFAULT_MAP_CENTER,
+          zoom: DEFAULT_MAP_ZOOM,
+          minZoom: 6,
+          maxZoom: 12,
+          scrollWheelZoom: true
+        });
+        markerLayerGroup = L.layerGroup().addTo(map);
+      }
+
+      updateMapTiles(theme);
+      renderMapMarkers();
+    }
+
+    function updateMapTiles(theme) {
+      if (!map) return;
+      if (tileLayer) {
+        map.removeLayer(tileLayer);
+      }
+
+      const isDark = (theme === 'dark');
+      const tileUrl = isDark
+        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+
+      tileLayer = L.tileLayer(tileUrl, {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
+        maxZoom: 19
+      }).addTo(map);
+    }
+
+    function renderMapMarkers() {
+      if (!map || !markerLayerGroup) return;
+      markerLayerGroup.clearLayers();
+
+      citiesData.forEach(c => {
+        const icon = getWeatherIcon(c.weather);
+        const labelText = (mapDisplayMode === 'temp')
+          ? `<span class="map-marker-temp">${c.max_temp}°</span>`
+          : `<span class="map-marker-rain">🌧️${c.rain_prob}%</span>`;
+
+        const shortName = c.name.replace('市', '').replace('縣', '');
+
+        const customIcon = L.divIcon({
+          className: 'custom-leaflet-marker',
+          html: `
+            <div class="map-marker-pill">
+              <span>${icon}</span>
+              <span>${shortName}</span>
+              ${labelText}
+            </div>
+          `,
+          iconSize: [85, 30],
+          iconAnchor: [42, 15]
+        });
+
+        const marker = L.marker([c.lat, c.lng], { icon: customIcon });
+
+        const popupContent = `
+          <div class="map-popup-card">
+            <h4>
+              <span>${icon} ${c.name}</span>
+              <span style="font-size:0.7rem; background:rgba(56,189,248,0.15); color:#38BDF8; padding:2px 6px; border-radius:6px;">${c.region}</span>
+            </h4>
+            <div class="popup-temp">${c.max_temp}°C <span style="font-size:0.85rem; color:#94A3B8; font-weight:600;">${c.min_temp}°~${c.max_temp}°</span></div>
+            <div class="popup-desc">${c.weather} ｜ ${c.comfort}</div>
+            <div style="font-size:0.8rem; margin-bottom:8px; font-weight:700; color:${c.rain_prob >= 30 ? '#EF4444' : '#10B981'};">
+              🌧️ 降雨機率: ${c.rain_prob}%
+            </div>
+            <button class="popup-btn" onclick="scrollToCity('${c.name}')">
+              🎯 聚焦查看天氣卡片 ⬇️
+            </button>
+          </div>
+        `;
+
+        marker.bindPopup(popupContent, { maxWidth: 220 });
+        markerLayerGroup.addLayer(marker);
+      });
+    }
+
+    // Map Mode Switcher (Temp vs Rain)
+    mapModeBtn.addEventListener('click', () => {
+      if (mapDisplayMode === 'temp') {
+        mapDisplayMode = 'rain';
+        mapModeBtn.innerHTML = '🌡️ 切換為氣溫模式';
+      } else {
+        mapDisplayMode = 'temp';
+        mapModeBtn.innerHTML = '🌧️ 切換為降雨模式';
+      }
+      renderMapMarkers();
+    });
+
+    // Reset View Button
+    resetMapBtn.addEventListener('click', () => {
+      if (map) {
+        map.setView(DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM, { animate: true });
+      }
+    });
+
+    // ==========================================
+    // THEME SWITCHER
+    // ==========================================
     function setTheme(theme) {
       htmlEl.setAttribute('data-theme', theme);
       themeBtn.textContent = (theme === 'dark' ? '🌙' : '☀️');
       localStorage.setItem('portal_theme', theme);
+      updateMapTiles(theme);
       renderPlotlyChart(theme);
     }
 
@@ -873,7 +1165,9 @@
       setTheme(current === 'dark' ? 'light' : 'dark');
     });
 
-    // Plotly Chart
+    // ==========================================
+    // PLOTLY CHART
+    // ==========================================
     function renderPlotlyChart(theme) {
       const isDark = (theme === 'dark');
       const fontColor = isDark ? '#F8FAFC' : '#0F172A';
@@ -926,9 +1220,12 @@
 
     window.addEventListener('resize', () => {
       Plotly.Plots.resize('plotly-temp-chart');
+      if (map) map.invalidateSize();
     });
 
-    // Live fetch /api/status
+    // ==========================================
+    // LIVE FETCH /api/status
+    // ==========================================
     async function loadApiStatus() {
       const output = document.getElementById('api-output');
       try {
@@ -952,6 +1249,7 @@
 
     // Initial render
     renderCards();
+    initLeafletMap(savedTheme);
     loadApiStatus();
   </script>
 </body>
