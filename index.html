@@ -533,14 +533,41 @@
           <div class="dot green"></div>
         </div>
 
-        <div class="address-bar">
+        <div class="address-bar" style="width: 70%; max-width: 640px; display: flex; align-items: center; gap: 6px;">
           <span>🔒</span>
-          <span id="frame-url-label">https://hw1-taiwan-weather.streamlit.app</span>
+          <input
+            type="text"
+            id="stream-url-input"
+            value="https://hw1-taiwan-weather.streamlit.app"
+            placeholder="請輸入 Streamlit App 網址..."
+            style="background: transparent; border: none; outline: none; color: inherit; width: 100%; font-family: monospace; font-size: 0.82rem;"
+          />
+          <button id="apply-url-btn" style="background: var(--accent-cyan); color: #fff; border: none; padding: 2px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 700; cursor: pointer; white-space: nowrap;">
+            套用
+          </button>
         </div>
 
         <div class="frame-controls">
           <button class="ctrl-btn" id="reload-frame-btn" title="重新載入畫面">🔄 重整</button>
           <button class="ctrl-btn" id="fullscreen-btn" title="切換全螢幕模式">⛶ 全螢幕</button>
+        </div>
+      </div>
+
+      <!-- Quick Launch Hero Callout Bar -->
+      <div style="background: linear-gradient(135deg, rgba(2, 132, 199, 0.18), rgba(139, 92, 246, 0.18)); border-bottom: 1px solid var(--border-color); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-size: 1.8rem;">🚀</span>
+          <div>
+            <div style="font-weight: 800; font-size: 1.05rem;">即時互動觀測系統就緒 (Streamlit Cloud)</div>
+            <div style="font-size: 0.82rem; color: var(--text-muted);">
+              包含 4 大地圖圖層、22 縣市排序卡片、一週趨勢、警特報與 SQLite 歷史軌跡
+            </div>
+          </div>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <a href="https://hw1-taiwan-weather.streamlit.app" target="_blank" rel="noopener noreferrer" class="btn btn-primary" id="hero-launch-btn" style="padding: 10px 20px; font-size: 0.92rem; box-shadow: 0 4px 18px rgba(2, 132, 199, 0.45);">
+            ⚡ 點此全螢幕開啟系統 (新分頁)
+          </a>
         </div>
       </div>
 
@@ -555,11 +582,11 @@
 
       <div class="frame-fallback">
         <div>
-          💡 <b>小提示：</b>若初次載入需等待幾秒啟動，您亦可隨時切換至新分頁獲取原生流暢體驗。
+          💡 <b>提示：</b>Chrome 瀏覽器若因第三方 Cookie 阻擋跨站內嵌，可直接點擊右側或上方按鈕於新分頁開啟原生流暢體驗。
         </div>
         <div>
-          <a href="https://hw1-taiwan-weather.streamlit.app" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="padding: 5px 12px; font-size: 0.8rem;">
-            🔗 直接在新分頁打開 Streamlit 原生介面
+          <a href="https://hw1-taiwan-weather.streamlit.app" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" id="fallback-open-btn" style="padding: 5px 12px; font-size: 0.8rem;">
+            🔗 新分頁打開 Streamlit
           </a>
         </div>
       </div>
@@ -675,6 +702,49 @@
         document.exitFullscreen();
       }
     });
+
+    // Dynamic Streamlit URL management
+    const urlInput = document.getElementById('stream-url-input');
+    const applyBtn = document.getElementById('apply-url-btn');
+    const heroBtn = document.getElementById('hero-launch-btn');
+    const fallbackBtn = document.getElementById('fallback-open-btn');
+    const directNavBtn = document.getElementById('direct-open-btn');
+
+    function updateTargetUrl(url) {
+      if (!url) return;
+      let cleanUrl = url.trim();
+      if (!cleanUrl.startsWith('http')) {
+        cleanUrl = 'https://' + cleanUrl;
+      }
+      urlInput.value = cleanUrl;
+      localStorage.setItem('saved_streamlit_url', cleanUrl);
+      
+      const embedUrl = cleanUrl.includes('?') ? cleanUrl + '&embed=true' : cleanUrl + '?embed=true';
+      frame.src = embedUrl;
+
+      if (heroBtn) heroBtn.href = cleanUrl;
+      if (fallbackBtn) fallbackBtn.href = cleanUrl;
+      if (directNavBtn) directNavBtn.href = cleanUrl;
+    }
+
+    const savedUrl = localStorage.getItem('saved_streamlit_url');
+    if (savedUrl) {
+      updateTargetUrl(savedUrl);
+    }
+
+    if (applyBtn) {
+      applyBtn.addEventListener('click', () => {
+        updateTargetUrl(urlInput.value);
+      });
+    }
+
+    if (urlInput) {
+      urlInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          updateTargetUrl(urlInput.value);
+        }
+      });
+    }
 
     // Live fetch /api/status
     async function loadApiStatus() {
