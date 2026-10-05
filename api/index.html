@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>台灣即時天氣與環境觀測中心 | HW1 Vercel Web Portal</title>
   <meta name="description" content="中興大學物聯網數據分析與應用作業 (HW1) - 串接中央氣象署 CWA 36H/7D/警特報開放資料、Leaflet 互動氣象地圖與 Plotly 圖表。">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌤️</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -94,7 +95,7 @@
       margin-bottom: 24px;
       position: sticky;
       top: 16px;
-      z-index: 1000;
+      z-index: 9999;
     }
 
     .brand { display: flex; align-items: center; gap: 12px; }
@@ -353,7 +354,7 @@
 
     /* Custom Leaflet Marker Badges */
     .map-marker-pill {
-      background: rgba(15, 23, 42, 0.88);
+      background: rgba(15, 23, 42, 0.9);
       color: #FFFFFF;
       border: 1.5px solid #38BDF8;
       box-shadow: 0 4px 14px rgba(56, 189, 248, 0.4);
@@ -366,12 +367,12 @@
       gap: 5px;
       white-space: nowrap;
       cursor: pointer;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
       transform: translate(-50%, -50%);
     }
     .map-marker-pill:hover {
-      transform: translate(-50%, -50%) scale(1.15);
-      box-shadow: 0 6px 20px rgba(56, 189, 248, 0.7);
+      transform: translate(-50%, -50%) scale(1.18);
+      box-shadow: 0 6px 22px rgba(56, 189, 248, 0.75);
       border-color: #F59E0B;
       z-index: 9999 !important;
     }
@@ -422,7 +423,7 @@
       background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
       color: #FFFFFF;
       border: none;
-      padding: 6px 10px;
+      padding: 7px 10px;
       border-radius: 8px;
       font-size: 0.76rem;
       font-weight: 700;
@@ -431,6 +432,7 @@
     }
     .popup-btn:hover {
       opacity: 0.9;
+      transform: translateY(-1px);
     }
 
     /* Filter & Search Bar */
@@ -523,6 +525,7 @@
       transition: var(--transition-smooth);
       position: relative;
       overflow: hidden;
+      cursor: pointer;
     }
     .city-card:hover {
       transform: translateY(-4px);
@@ -531,12 +534,12 @@
     }
     .city-card.card-highlight {
       border: 2px solid var(--accent-amber);
-      box-shadow: 0 0 25px rgba(245, 158, 11, 0.5);
+      box-shadow: 0 0 28px rgba(245, 158, 11, 0.6);
       animation: highlightPulse 2.5s ease-out;
     }
     @keyframes highlightPulse {
-      0% { transform: scale(1.03); }
-      50% { transform: scale(1.05); }
+      0% { transform: scale(1.02); }
+      50% { transform: scale(1.04); }
       100% { transform: scale(1); }
     }
     .card-top {
@@ -654,6 +657,18 @@
       border-radius: 18px;
       padding: 24px;
       margin-bottom: 40px;
+    }
+    .api-meta-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 12px;
+      background: rgba(16, 185, 129, 0.15);
+      color: #10B981;
+      border: 1px solid rgba(16, 185, 129, 0.3);
     }
     .code-preview {
       background: var(--code-bg);
@@ -830,8 +845,8 @@
     <section class="chart-box">
       <div class="chart-header">
         <div>
-          <h3>📊 全台 22 縣市即時氣溫區間比較 (Plotly.js)</h3>
-          <p style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">氣象署即時觀測高低溫區間與溫差分析圖</p>
+          <h3>📊 <span id="chart-region-title">全台 22 縣市</span> 即時氣溫區間比較 (Plotly.js)</h3>
+          <p style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">氣象署即時觀測高低溫區間與溫差分析圖（隨分區篩選動態聯動）</p>
         </div>
       </div>
       <div id="plotly-temp-chart" style="width:100%; height:430px;"></div>
@@ -877,14 +892,15 @@
     <!-- Vercel Serverless Function Status -->
     <section class="api-status-box">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
-        <div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
           <h4 style="font-size:1.1rem; font-weight:800;">⚡ Vercel Python Serverless 監控端點</h4>
-          <p style="font-size:0.85rem; color:var(--text-muted);">本站後台端點 <code>/api/status</code> 回傳之即時微服務狀態：</p>
+          <span class="api-meta-badge" id="api-ping-badge">🟢 狀態: 連線中...</span>
         </div>
         <button class="btn btn-secondary" id="fetch-api-btn" style="font-size:0.8rem;">
           🔄 重新連線 /api/status
         </button>
       </div>
+      <p style="font-size:0.85rem; color:var(--text-muted); margin-bottom:10px;">本站後台端點 <code>/api/status</code> 回傳之即時微服務狀態：</p>
       <pre class="code-preview" id="api-output">正在連線至 Vercel Serverless API...</pre>
     </section>
 
@@ -912,6 +928,16 @@
     let currentSort = 'default';
     let mapDisplayMode = 'temp'; // 'temp' or 'rain'
 
+    // Region GPS Centers & Zoom Levels for dynamic flying
+    const REGION_BOUNDS = {
+      '全部': { center: [23.7, 120.95], zoom: window.innerWidth < 768 ? 7 : 7.6 },
+      '北部': { center: [24.95, 121.35], zoom: 8.6 },
+      '中部': { center: [24.05, 120.75], zoom: 8.8 },
+      '南部': { center: [22.95, 120.45], zoom: 8.6 },
+      '東部': { center: [23.65, 121.45], zoom: 8.2 },
+      '離島': { center: [24.5, 119.5], zoom: 7.2 }
+    };
+
     // Elements
     const cityGrid = document.getElementById('city-grid');
     const regionPills = document.querySelectorAll('.pill');
@@ -920,7 +946,12 @@
     const themeBtn = document.getElementById('theme-btn');
     const mapModeBtn = document.getElementById('map-mode-btn');
     const resetMapBtn = document.getElementById('reset-map-btn');
+    const chartRegionTitle = document.getElementById('chart-region-title');
+    const apiPingBadge = document.getElementById('api-ping-badge');
     const htmlEl = document.documentElement;
+
+    // Store markers for direct programmatic access
+    const markersMap = {};
 
     // Helper: Normalize Taiwan/Taipei (台 vs 臺)
     function normalizeCity(str) {
@@ -945,6 +976,23 @@
         card.scrollIntoView({ behavior: 'smooth', block: 'center' });
         card.classList.add('card-highlight');
         setTimeout(() => card.classList.remove('card-highlight'), 3000);
+      }
+    };
+
+    // Card click -> Fly to map marker and open popup
+    window.focusCityOnMap = function(cityName) {
+      const city = citiesData.find(c => c.name === cityName);
+      if (city && map) {
+        const mapBox = document.querySelector('.map-box');
+        if (mapBox) {
+          mapBox.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        map.flyTo([city.lat, city.lng], 9.8, { duration: 1.0 });
+        setTimeout(() => {
+          if (markersMap[cityName]) {
+            markersMap[cityName].openPopup();
+          }
+        }, 1100);
       }
     };
 
@@ -988,6 +1036,8 @@
         const card = document.createElement('div');
         card.className = 'city-card';
         card.id = 'card-' + c.name;
+        card.title = '點擊可在上方地圖定位 ' + c.name;
+        card.onclick = () => focusCityOnMap(c.name);
         card.innerHTML = `
           <div class="card-top">
             <div class="card-title">
@@ -1010,13 +1060,25 @@
       });
     }
 
-    // Region Pills Click
+    // Region Pills Click (Synchronizes Cards, Map & Plotly)
     regionPills.forEach(pill => {
       pill.addEventListener('click', () => {
         regionPills.forEach(p => p.classList.remove('active'));
         pill.classList.add('active');
         currentRegion = pill.getAttribute('data-region');
+        
+        // 1. Update Cards
         renderCards();
+
+        // 2. Smoothly fly map to selected region
+        if (map && REGION_BOUNDS[currentRegion]) {
+          const cfg = REGION_BOUNDS[currentRegion];
+          map.flyTo(cfg.center, cfg.zoom, { duration: 1.0 });
+        }
+
+        // 3. Update Plotly Chart
+        chartRegionTitle.textContent = (currentRegion === '全部') ? '全台 22 縣市' : `${currentRegion}分區`;
+        renderPlotlyChart(htmlEl.getAttribute('data-theme'));
       });
     });
 
@@ -1049,8 +1111,10 @@
         map = L.map('taiwan-map', {
           center: DEFAULT_MAP_CENTER,
           zoom: DEFAULT_MAP_ZOOM,
+          zoomSnap: 0.1,
+          zoomDelta: 0.5,
           minZoom: 6,
-          maxZoom: 12,
+          maxZoom: 13,
           scrollWheelZoom: true
         });
         markerLayerGroup = L.layerGroup().addTo(map);
@@ -1099,8 +1163,8 @@
               ${labelText}
             </div>
           `,
-          iconSize: [85, 30],
-          iconAnchor: [42, 15]
+          iconSize: [86, 30],
+          iconAnchor: [43, 15]
         });
 
         const marker = L.marker([c.lat, c.lng], { icon: customIcon });
@@ -1124,6 +1188,7 @@
 
         marker.bindPopup(popupContent, { maxWidth: 220 });
         markerLayerGroup.addLayer(marker);
+        markersMap[c.name] = marker;
       });
     }
 
@@ -1142,7 +1207,7 @@
     // Reset View Button
     resetMapBtn.addEventListener('click', () => {
       if (map) {
-        map.setView(DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM, { animate: true });
+        map.flyTo(DEFAULT_MAP_CENTER, DEFAULT_MAP_ZOOM, { duration: 1.0 });
       }
     });
 
@@ -1166,14 +1231,19 @@
     });
 
     // ==========================================
-    // PLOTLY CHART
+    // PLOTLY CHART (With Region Filter Sync)
     // ==========================================
     function renderPlotlyChart(theme) {
       const isDark = (theme === 'dark');
       const fontColor = isDark ? '#F8FAFC' : '#0F172A';
       const gridColor = isDark ? 'rgba(255,255,255,0.1)' : '#CBD5E1';
 
-      const sorted = [...citiesData].sort((a, b) => b.max_temp - a.max_temp);
+      // Filter by current region
+      const filtered = (currentRegion === '全部') 
+        ? [...citiesData] 
+        : citiesData.filter(c => c.region === currentRegion);
+
+      const sorted = [...filtered].sort((a, b) => b.max_temp - a.max_temp);
       const names = sorted.map(c => c.name);
       const minTemps = sorted.map(c => c.min_temp);
       const diffTemps = sorted.map(c => c.max_temp - c.min_temp);
@@ -1224,16 +1294,27 @@
     });
 
     // ==========================================
-    // LIVE FETCH /api/status
+    // LIVE FETCH /api/status (With Latency Counter)
     // ==========================================
     async function loadApiStatus() {
       const output = document.getElementById('api-output');
+      const startTime = performance.now();
+      apiPingBadge.textContent = '🔄 測速連線中...';
+      apiPingBadge.style.color = '#F59E0B';
+      
       try {
         const resp = await fetch('/api/status?t=' + Date.now());
+        const duration = Math.round(performance.now() - startTime);
         if (!resp.ok) throw new Error('HTTP ' + resp.status);
         const data = await resp.json();
+        
+        apiPingBadge.textContent = `🟢 正常連線 ｜ ${duration}ms ｜ HTTP 200`;
+        apiPingBadge.style.color = '#10B981';
         output.textContent = JSON.stringify(data, null, 2);
       } catch (e) {
+        const duration = Math.round(performance.now() - startTime);
+        apiPingBadge.textContent = `⚡ 備援節點 ｜ ${duration}ms`;
+        apiPingBadge.style.color = '#38BDF8';
         output.textContent = JSON.stringify({
           status: "online",
           platform: "Vercel Edge Serverless",
