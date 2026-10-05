@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="zh-TW" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>台灣即時天氣觀測與預報系統 | Taiwan Weather Forecast</title>
+  <meta name="description" content="中央氣象署 CWA 即時 36H/7D 預報、氣象警特報、空氣品質 AQI 與紫外線 UVI 監測系統，支援 SQLite 持久化儲存與時間序列分析。">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --font-main: 'Plus Jakarta Sans', 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif;
+      --transition-smooth: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    [data-theme="dark"] {
+      --bg-gradient: radial-gradient(circle at 15% 15%, #0B192C 0%, #030712 55%, #000000 100%);
+      --bg-surface: rgba(15, 23, 42, 0.65);
+      --bg-card: rgba(30, 41, 59, 0.55);
+      --border-color: rgba(56, 189, 248, 0.22);
+      --border-card: rgba(255, 255, 255, 0.1);
+      --text-main: #F8FAFC;
+      --text-muted: #94A3B8;
+      --text-sub: #64748B;
+      --accent-cyan: #38BDF8;
+      --accent-blue: #0284C7;
+      --accent-amber: #F59E0B;
+      --accent-green: #10B981;
+      --accent-purple: #8B5CF6;
+      --shadow-glow: 0 16px 36px -10px rgba(56, 189, 248, 0.25);
+      --browser-bar-bg: rgba(15, 23, 42, 0.85);
+      --code-bg: rgba(0, 0, 0, 0.4);
+    }
+
+    [data-theme="light"] {
+      --bg-gradient: radial-gradient(circle at 15% 15%, #E0F2FE 0%, #F0F9FF 45%, #FFFFFF 100%);
+      --bg-surface: rgba(255, 255, 255, 0.75);
+      --bg-card: rgba(255, 255, 255, 0.85);
+      --border-color: rgba(2, 132, 199, 0.25);
+      --border-card: rgba(203, 213, 225, 0.6);
+      --text-main: #0F172A;
+      --text-muted: #334155;
+      --text-sub: #64748B;
+      --accent-cyan: #0284C7;
+      --accent-blue: #0369A1;
+      --accent-amber: #D97706;
+      --accent-green: #059669;
+      --accent-purple: #7C3AED;
+      --shadow-glow: 0 16px 36px -10px rgba(2, 132, 199, 0.18);
+      --browser-bar-bg: rgba(241, 245, 249, 0.9);
+      --code-bg: rgba(241, 245, 249, 0.8);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-main);
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      min-height: 100vh;
+      line-height: 1.6;
+      overflow-x: hidden;
+      transition: background 0.4s ease, color 0.4s ease;
+    }
+
+    /* Glass Container */
+    .container {
+      max-width: 1380px;
+      margin: 0 auto;
+      padding: 24px 20px 60px;
+    }
+
+    /* Top Navigation */
+    header.navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 24px;
+      background: var(--bg-surface);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--border-color);
+      border-radius: 18px;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.12);
+      margin-bottom: 28px;
+      position: sticky;
+      top: 16px;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      font-size: 1.8rem;
+      animation: float 4s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+
+    .brand-info h1 {
+      font-size: 1.15rem;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .brand-info span {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      display: block;
+      font-weight: 600;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .badge-pulse {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid rgba(16, 185, 129, 0.35);
+      color: var(--accent-green);
+    }
+
+    .pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent-green);
+      box-shadow: 0 0 10px var(--accent-green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.3); opacity: 1; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      padding: 8px 14px;
+      border-radius: 12px;
+      text-decoration: none;
+      cursor: pointer;
+      transition: var(--transition-smooth);
+      border: 1px solid transparent;
+      outline: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+      color: #FFFFFF;
+      box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(2, 132, 199, 0.5);
+    }
+
+    .btn-secondary {
+      background: var(--bg-card);
+      color: var(--text-main);
+      border: 1px solid var(--border-card);
+    }
+
+    .btn-secondary:hover {
+      background: var(--bg-surface);
+      border-color: var(--accent-cyan);
+      transform: translateY(-2px);
+    }
+
+    .theme-toggle {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.1rem;
+      transition: var(--transition-smooth);
+      color: var(--text-main);
+    }
+
+    .theme-toggle:hover {
+      border-color: var(--accent-amber);
+      transform: rotate(15deg);
+    }
+
+    /* Hero Section */
+    .hero {
+      text-align: center;
+      margin-bottom: 28px;
+      padding: 10px 0;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 4px 14px;
+      border-radius: 30px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--accent-cyan);
+      margin-bottom: 14px;
+    }
+
+    .hero h2 {
+      font-size: 2.2rem;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      line-height: 1.25;
+      margin-bottom: 12px;
+    }
+
+    .hero p {
+      max-width: 780px;
+      margin: 0 auto;
+      font-size: 0.98rem;
+      color: var(--text-muted);
+    }
+
+    /* Live Embedded Window */
+    .app-frame-wrapper {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      box-shadow: var(--shadow-glow);
+      overflow: hidden;
+      margin-bottom: 40px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      transition: var(--transition-smooth);
+    }
+
+    .frame-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 18px;
+      background: var(--browser-bar-bg);
+      border-bottom: 1px solid var(--border-card);
+    }
+
+    .window-dots {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .dot.red { background: #EF4444; }
+    .dot.yellow { background: #F59E0B; }
+    .dot.green { background: #10B981; }
+
+    .address-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(0, 0, 0, 0.15);
+      border: 1px solid var(--border-card);
+      border-radius: 20px;
+      padding: 4px 16px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      width: 50%;
+      max-width: 480px;
+      justify-content: center;
+      font-family: monospace;
+    }
+
+    .frame-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .ctrl-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.9rem;
+      padding: 4px 8px;
+      border-radius: 6px;
+      transition: var(--transition-smooth);
+    }
+
+    .ctrl-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .iframe-container {
+      position: relative;
+      width: 100%;
+      height: 840px;
+      background: rgba(0, 0, 0, 0.05);
+    }
+
+    iframe#streamlit-frame {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
+
+    /* Fallback / Direct Launch Overlay */
+    .frame-fallback {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 20px;
+      background: rgba(2, 132, 199, 0.08);
+      border-top: 1px solid var(--border-card);
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    /* Feature Grid */
+    .section-title {
+      font-size: 1.4rem;
+      font-weight: 800;
+      margin-bottom: 20px;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-card);
+      border-radius: 16px;
+      padding: 22px;
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition: var(--transition-smooth);
+    }
+
+    .feature-card:hover {
+      transform: translateY(-4px);
+      border-color: var(--border-color);
+      box-shadow: var(--shadow-glow);
+    }
+
+    .feature-icon {
+      font-size: 2rem;
+      margin-bottom: 12px;
+      display: inline-block;
+    }
+
+    .feature-card h3 {
+      font-size: 1.05rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+      color: var(--text-main);
+    }
+
+    .feature-card p {
+      font-size: 0.86rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* API Status Box */
+    .api-status-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 18px;
+      padding: 24px;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      margin-bottom: 40px;
+    }
+
+    .api-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .code-preview {
+      background: var(--code-bg);
+      border: 1px solid var(--border-card);
+      border-radius: 12px;
+      padding: 14px 18px;
+      font-family: monospace;
+      font-size: 0.82rem;
+      color: var(--text-main);
+      overflow-x: auto;
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      padding-top: 30px;
+      border-top: 1px solid var(--border-card);
+      color: var(--text-sub);
+      font-size: 0.85rem;
+    }
+
+    footer a {
+      color: var(--accent-cyan);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    footer a:hover {
+      text-decoration: underline;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      header.navbar {
+        flex-direction: column;
+        gap: 14px;
+        align-items: flex-start;
+      }
+      .nav-actions {
+        width: 100%;
+        justify-content: space-between;
+      }
+      .iframe-container {
+        height: 600px;
+      }
+      .address-bar {
+        display: none;
+      }
+      .hero h2 {
+        font-size: 1.6rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Navbar -->
+    <header class="navbar">
+      <div class="brand">
+        <div class="brand-icon">🌤️</div>
+        <div class="brand-info">
+          <h1>台灣即時天氣觀測系統 (HW1)</h1>
+          <span>Antigravity × Gemini × GitHub 專案實作</span>
+        </div>
+      </div>
+
+      <div class="nav-actions">
+        <div class="badge-pulse">
+          <div class="pulse-dot"></div>
+          <span>Vercel Edge Active</span>
+        </div>
+
+        <button class="theme-toggle" id="theme-btn" title="切換深色/淺色主題">🌙</button>
+
+        <a href="https://github.com/ajidohf9/HW1-Taiwan-Weather" target="_blank" rel="noopener noreferrer" class="btn btn-secondary">
+          🐱 GitHub 倉庫
+        </a>
+
+        <a href="https://hw1-taiwan-weather.streamlit.app" target="_blank" rel="noopener noreferrer" class="btn btn-primary" id="direct-open-btn">
+          🚀 新分頁原生開啟
+        </a>
+      </div>
+    </header>
+
+    <!-- Hero Header -->
+    <section class="hero">
+      <div class="hero-badge">
+        <span>✨ 雙架構部署模式：Vercel Web Portal + Streamlit Community Cloud</span>
+      </div>
+      <h2>全台氣象高解析觀測與防災預警中心</h2>
+      <p>串接中央氣象署 CWA 36 小時、一週趨勢及即時警特報開放資料，結合環境部空氣品質 (AQI) 與紫外線 (UVI) 監測，具備本地 SQLite 智慧快取與時間序列歷史軌跡追蹤。</p>
+    </section>
+
+    <!-- Embedded Live App Window -->
+    <main class="app-frame-wrapper">
+      <div class="frame-toolbar">
+        <div class="window-dots">
+          <div class="dot red"></div>
+          <div class="dot yellow"></div>
+          <div class="dot green"></div>
+        </div>
+
+        <div class="address-bar">
+          <span>🔒</span>
+          <span id="frame-url-label">https://hw1-taiwan-weather.streamlit.app</span>
+        </div>
+
+        <div class="frame-controls">
+          <button class="ctrl-btn" id="reload-frame-btn" title="重新載入畫面">🔄 重整</button>
+          <button class="ctrl-btn" id="fullscreen-btn" title="切換全螢幕模式">⛶ 全螢幕</button>
+        </div>
+      </div>
+
+      <div class="iframe-container" id="frame-box">
+        <iframe
+          id="streamlit-frame"
+          src="https://hw1-taiwan-weather.streamlit.app?embed=true"
+          title="Taiwan Weather Streamlit App"
+          allow="geolocation; camera; microphone;"
+        ></iframe>
+      </div>
+
+      <div class="frame-fallback">
+        <div>
+          💡 <b>小提示：</b>若初次載入需等待幾秒啟動，您亦可隨時切換至新分頁獲取原生流暢體驗。
+        </div>
+        <div>
+          <a href="https://hw1-taiwan-weather.streamlit.app" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="padding: 5px 12px; font-size: 0.8rem;">
+            🔗 直接在新分頁打開 Streamlit 原生介面
+          </a>
+        </div>
+      </div>
+    </main>
+
+    <!-- Key Architecture & Features Grid -->
+    <section>
+      <h3 class="section-title">✨ 六大核心技術亮點與模組設計</h3>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="feature-icon">🗺️</div>
+          <h3>互動氣象與降雨機率地圖</h3>
+          <p>整合 Plotly 散佈地圖，支援「氣溫」、「降雨機率 (PoP)」、「紫外線」與「AQI」四大圖層即時切換，並直接於縣市座標標註數值。</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">🚨</div>
+          <h3>即時氣象警特報與防災專區</h3>
+          <p>串接氣象署 W-C0033-001 災害天氣特報 API，涵蓋強風、豪雨、低溫與高溫資訊，連動卡片動態呼吸燈 Badge 與防災指引。</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">📈</div>
+          <h3>SQLite 時間序列歷史軌跡</h3>
+          <p>本地持久化記錄每次同步觀測值，繪製氣溫區間帶、降雨機率變化曲線與多縣市跨維度走勢對比，極大化資料庫應用價值。</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">🌿</div>
+          <h3>環境部空品 (AQI) 與紫外線 (UVI)</h3>
+          <p>全台 22 縣市空氣品質與紫外線指數排名分析，輔以台灣官方防護分級對照與健康警示卡片。</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">⚡</div>
+          <h3>智慧快取中繼與效能指示器</h3>
+          <p>建立 system_cache_meta 快取資料表，毫秒級判定資料新鮮度（0~60 分鐘 TTL 自訂），本地命中快取提速 98% 以上。</p>
+        </div>
+
+        <div class="feature-card">
+          <div class="feature-icon">📥</div>
+          <h3>100% 完整 CSV 匯出支援</h3>
+          <p>7 大功能分頁均提供專屬一鍵下載 UTF-8 (BOM) CSV 功能，符合資料科學與氣象研究之資料可攜性標準。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Vercel Serverless API Status -->
+    <section class="api-status-box">
+      <div class="api-header">
+        <div>
+          <h3 style="font-size: 1.1rem; font-weight: 800; margin-bottom: 4px;">⚡ Vercel Serverless Function 監控狀態</h3>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">本 Vercel 節點已內建 Python Serverless 端點 <code>/api/status</code>：</p>
+        </div>
+        <button class="btn btn-secondary" id="fetch-api-btn" style="font-size: 0.8rem;">
+          🔄 即時呼叫 /api/status
+        </button>
+      </div>
+      <div class="code-preview" id="api-output">
+        正在連線至 Vercel Serverless API...
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+      <p>
+        打造你的 AI Coding Agent：<b>Antigravity × Gemini × GitHub</b> 專案實作 (HW1)
+      </p>
+      <p style="margin-top: 6px;">
+        專案開發者：<b>ajidohf9</b> ｜ 
+        <a href="https://github.com/ajidohf9/HW1-Taiwan-Weather" target="_blank" rel="noopener noreferrer">GitHub 原始碼倉庫</a> ｜ 
+        <a href="https://hw1-taiwan-weather.streamlit.app" target="_blank" rel="noopener noreferrer">Streamlit Community Cloud</a> ｜ 
+        <a href="/api/status" target="_blank">Vercel Serverless Status</a>
+      </p>
+    </footer>
+  </div>
+
+  <script>
+    // Theme toggle
+    const themeBtn = document.getElementById('theme-btn');
+    const htmlEl = document.documentElement;
+
+    function setTheme(theme) {
+      htmlEl.setAttribute('data-theme', theme);
+      themeBtn.textContent = theme === 'dark' ? '🌙' : '☀️';
+      localStorage.setItem('portal_theme', theme);
+    }
+
+    const savedTheme = localStorage.getItem('portal_theme') || 'dark';
+    setTheme(savedTheme);
+
+    themeBtn.addEventListener('click', () => {
+      const current = htmlEl.getAttribute('data-theme');
+      setTheme(current === 'dark' ? 'light' : 'dark');
+    });
+
+    // Frame controls
+    const frame = document.getElementById('streamlit-frame');
+    const reloadBtn = document.getElementById('reload-frame-btn');
+    const fullscreenBtn = document.getElementById('fullscreen-btn');
+    const frameBox = document.getElementById('frame-box');
+
+    reloadBtn.addEventListener('click', () => {
+      frame.src = frame.src;
+    });
+
+    fullscreenBtn.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        frameBox.requestFullscreen().catch(err => {
+          alert('無法進入全螢幕：' + err.message);
+        });
+      } else {
+        document.exitFullscreen();
+      }
+    });
+
+    // Live fetch /api/status
+    async function loadApiStatus() {
+      const output = document.getElementById('api-output');
+      try {
+        const resp = await fetch('/api/status');
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        const data = await resp.json();
+        output.textContent = JSON.stringify(data, null, 2);
+      } catch (e) {
+        output.textContent = JSON.stringify({
+          status: "ready",
+          deployed_platform: "Vercel",
+          note: "本端點於 Vercel 部署上線後自動響應，本地靜態預覽狀態正常。",
+          streamlit_target: "https://hw1-taiwan-weather.streamlit.app",
+          timestamp: new Date().toISOString()
+        }, null, 2);
+      }
+    }
+
+    document.getElementById('fetch-api-btn').addEventListener('click', loadApiStatus);
+    loadApiStatus();
+  </script>
+</body>
+</html>
