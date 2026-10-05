@@ -872,9 +872,10 @@ def main():
         """, unsafe_allow_html=True)
 
         with st.expander("🔍 點擊展開警戒縣市詳細範圍、時段與防災避險指引", expanded=False):
-            c_a_cols = st.columns(len(active_alerts) if len(active_alerts) in [2, 3] else 1)
+            n_cols = min(max(len(active_alerts), 1), 3)
+            c_a_cols = st.columns(n_cols)
             for a_idx, a in enumerate(active_alerts):
-                target_col = c_a_cols[a_idx] if len(active_alerts) in [2, 3] else st
+                target_col = c_a_cols[a_idx % n_cols]
                 with target_col:
                     st.markdown(f"""
                     <div style="padding: 12px 16px; border-radius: 14px; background: rgba(30, 41, 59, 0.05); border-left: 5px solid {a['color']}; border-top:1px solid rgba(148,163,184,0.15); border-right:1px solid rgba(148,163,184,0.15); border-bottom:1px solid rgba(148,163,184,0.15); margin-bottom: 10px;">
