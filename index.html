@@ -40,7 +40,6 @@
       --accent-purple: #8B5CF6;
       --shadow-glow: 0 16px 36px -10px rgba(56, 189, 248, 0.25);
       --code-bg: rgba(0, 0, 0, 0.45);
-      --leaflet-tile: 'dark';
     }
 
     [data-theme="light"] {
@@ -60,7 +59,6 @@
       --accent-purple: #7C3AED;
       --shadow-glow: 0 16px 36px -10px rgba(2, 132, 199, 0.18);
       --code-bg: rgba(241, 245, 249, 0.85);
-      --leaflet-tile: 'light';
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -352,12 +350,20 @@
       background: #0B192C;
     }
 
+    /* Clean Dark/Light Filter for OpenStreetMap Tiles (ZERO Watermark) */
+    [data-theme="dark"] #taiwan-map .leaflet-tile-pane {
+      filter: brightness(0.7) invert(1) contrast(1.55) hue-rotate(205deg) saturate(0.35);
+    }
+    [data-theme="light"] #taiwan-map .leaflet-tile-pane {
+      filter: saturate(1.1) brightness(0.98);
+    }
+
     /* Custom Leaflet Marker Badges */
     .map-marker-pill {
-      background: rgba(15, 23, 42, 0.9);
+      background: rgba(15, 23, 42, 0.92);
       color: #FFFFFF;
       border: 1.5px solid #38BDF8;
-      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.4);
+      box-shadow: 0 4px 14px rgba(56, 189, 248, 0.45);
       padding: 4px 9px;
       border-radius: 16px;
       font-size: 0.78rem;
@@ -372,7 +378,7 @@
     }
     .map-marker-pill:hover {
       transform: translate(-50%, -50%) scale(1.18);
-      box-shadow: 0 6px 22px rgba(56, 189, 248, 0.75);
+      box-shadow: 0 6px 22px rgba(56, 189, 248, 0.8);
       border-color: #F59E0B;
       z-index: 9999 !important;
     }
@@ -799,10 +805,13 @@
         <div>
           <h3>🗺️ 全台 22 縣市即時氣象互動地圖 (Leaflet.js)</h3>
           <p style="font-size:0.85rem; color:var(--text-muted); margin-top:2px;">
-            支援全螢幕縮放拖曳、深淺色地圖底圖、即時氣溫與降雨圖標；點擊標記可自動聚焦對應縣市卡片
+            支援全螢幕縮放拖曳、繁體中文地圖底圖、即時氣溫與降雨圖標；點擊標記可自動聚焦對應縣市卡片
           </p>
         </div>
         <div class="map-controls-group">
+          <button class="btn btn-secondary" id="map-layer-btn" style="font-size:0.8rem;">
+            🛰️ 衛星影像模式
+          </button>
           <button class="btn btn-secondary" id="map-mode-btn" style="font-size:0.8rem;">
             🌡️ 切換為降雨模式
           </button>
@@ -859,7 +868,7 @@
         <div class="feature-card">
           <div class="feature-icon">🗺️</div>
           <h4>互動氣象地圖 (Leaflet.js)</h4>
-          <p>整合 Leaflet GPU 加速地圖，動態載入 CartoDB 深淺雙色底圖，22 縣市氣候標記支援即時圖層切換與彈窗導航。</p>
+          <p>整合 Leaflet GPU 加速地圖，搭載 OpenStreetMap 與 ESRI 雙層底圖，22 縣市氣候標記支援即時圖層切換與彈窗導航。</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">🚨</div>
@@ -927,6 +936,7 @@
     let searchQuery = '';
     let currentSort = 'default';
     let mapDisplayMode = 'temp'; // 'temp' or 'rain'
+    let currentMapTileType = 'osm'; // 'osm' or 'satellite'
 
     // Region GPS Centers & Zoom Levels for dynamic flying
     const REGION_BOUNDS = {
@@ -945,6 +955,7 @@
     const sortSelect = document.getElementById('sort-select');
     const themeBtn = document.getElementById('theme-btn');
     const mapModeBtn = document.getElementById('map-mode-btn');
+    const mapLayerBtn = document.getElementById('map-layer-btn');
     const resetMapBtn = document.getElementById('reset-map-btn');
     const chartRegionTitle = document.getElementById('chart-region-title');
     const apiPingBadge = document.getElementById('api-ping-badge');
@@ -1095,7 +1106,7 @@
     });
 
     // ==========================================
-    // LEAFLET MAP INITIALIZATION
+    // LEAFLET MAP INITIALIZATION (OpenStreetMap & Satellite)
     // ==========================================
     let map = null;
     let tileLayer = null;
@@ -1114,7 +1125,7 @@
           zoomSnap: 0.1,
           zoomDelta: 0.5,
           minZoom: 6,
-          maxZoom: 13,
+          maxZoom: 14,
           scrollWheelZoom: true
         });
         markerLayerGroup = L.layerGroup().addTo(map);
@@ -1130,16 +1141,19 @@
         map.removeLayer(tileLayer);
       }
 
-      const isDark = (theme === 'dark');
-      const tileUrl = isDark
-        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-        : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-
-      tileLayer = L.tileLayer(tileUrl, {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-        subdomains: 'abcd',
-        maxZoom: 19
-      }).addTo(map);
+      if (currentMapTileType === 'satellite') {
+        // ESRI Satellite Imagery (High-res, NO API KEY)
+        tileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+          attribution: '&copy; Esri &mdash; Maxar, Earthstar Geographics, GIS User Community',
+          maxZoom: 18
+        }).addTo(map);
+      } else {
+        // OpenStreetMap Official (Clean Traditional Chinese, NO API KEY, ZERO Watermark)
+        tileLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> 貢獻者',
+          maxZoom: 18
+        }).addTo(map);
+      }
     }
 
     function renderMapMarkers() {
@@ -1191,6 +1205,18 @@
         markersMap[c.name] = marker;
       });
     }
+
+    // Map Layer Switcher (OSM vs Satellite)
+    mapLayerBtn.addEventListener('click', () => {
+      if (currentMapTileType === 'osm') {
+        currentMapTileType = 'satellite';
+        mapLayerBtn.innerHTML = '🗺️ 切換為標準地圖';
+      } else {
+        currentMapTileType = 'osm';
+        mapLayerBtn.innerHTML = '🛰️ 衛星影像模式';
+      }
+      updateMapTiles(htmlEl.getAttribute('data-theme'));
+    });
 
     // Map Mode Switcher (Temp vs Rain)
     mapModeBtn.addEventListener('click', () => {
