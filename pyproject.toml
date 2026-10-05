@@ -1,0 +1,8 @@
+[project]
+name = "hw1-taiwan-weather"
+version = "1.0.0"
+description = "Taiwan Weather Forecast System"
+requires-python = ">=3.10"
+
+[tool.vercel]
+entrypoint = "api.status:handler"

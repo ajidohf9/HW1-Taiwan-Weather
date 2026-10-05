@@ -6,6 +6,19 @@ Features: Glassmorphism UI with WCAG AAA High Contrast, Dark (Aurora) / Light (C
 36H forecast, 7-Day forecast, UV Index & AQI indicators, interactive Plotly visualizations.
 """
 
+from http.server import BaseHTTPRequestHandler
+
+class _VercelFallbackHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.end_headers()
+        self.wfile.write(b"<h1>Taiwan Weather App - Streamlit Engine Running</h1>")
+
+handler = _VercelFallbackHandler
+app = _VercelFallbackHandler
+application = _VercelFallbackHandler
+
 import os
 import importlib
 import streamlit as st
